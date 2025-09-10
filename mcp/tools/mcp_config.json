@@ -1,0 +1,46 @@
+{
+  "base_url": "http://127.0.0.1:8188",
+  "services": {
+    "ai_backend": {
+      "url": "http://127.0.0.1:8188",
+      "type": "flask",
+      "description": "Main AI inference service"
+    },
+    "comfyui": {
+      "url": "http://127.0.0.1:8189", 
+      "type": "comfyui",
+      "description": "ComfyUI workflow engine"
+    },
+    "llamacpp": {
+      "url": "http://127.0.0.1:8190",
+      "type": "llamacpp", 
+      "description": "LlamaCPP CPU-optimized LLM service"
+    },
+    "openvino": {
+      "url": "http://127.0.0.1:8191",
+      "type": "openvino",
+      "description": "Intel OpenVINO optimized inference"
+    },
+    "ollama": {
+      "url": "http://127.0.0.1:11434",
+      "type": "ollama",
+      "description": "Ollama local LLM management"
+    }
+  },
+  "mcp_server": {
+    "name": "ai-playground",
+    "version": "1.0.0",
+    "timeout": {
+      "default": 120,
+      "image_generation": 300,
+      "model_download": 600
+    }
+  },
+  "features": {
+    "image_generation": true,
+    "llm_chat": true,
+    "workflow_management": true,
+    "model_management": true,
+    "service_management": true
+  }
+}
