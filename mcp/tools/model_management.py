@@ -198,4 +198,18 @@ class ModelManagementTools:
                     
                     for model_type, type_models in model_groups.items():
                         output += f"**{model_type.upper()} Models:**\n"
-                        for model in type_
+                        for model in type_models:
+                            status_icon = "✅" if model.get("status") == "installed" else "📥"
+                            output += f"  {status_icon} {model.get('name', 'Unknown')}\n"
+                            output += f"    ID: {model.get('id', 'N/A')}\n"
+                            output += f"    Status: {model.get('status', 'unknown')}\n"
+                            if model.get('size'):
+                                output += f"    Size: {model.get('size')}\n"
+                            output += "\n"
+                
+                return [TextContent(type="text", text=output)]
+            else:
+                return [TextContent(type="text", text=f"❌ Failed to fetch models: {result.get('message', 'Unknown error')}")]
+                
+        except Exception as e:
+            return [TextContent(type="text", text=f"❌ Error listing models: {str(e)}")]

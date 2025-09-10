@@ -375,3 +375,23 @@ class LLMTools:
         """Cleanup HTTP client"""
         if hasattr(self, 'client'):
             asyncio.create_task(self.client.aclose())
+        # 在 mcp/tools/llm_tools.py 中添加
+    async def _mcp_tool_call(self, args: Dict[str, Any]) -> Sequence[TextContent]:
+        """調用 MCP 工具作為 LLM 的擴展功能"""
+        try:
+            tool_name = args.get("tool_name")
+            tool_args = args.get("tool_args", {})
+            
+            # 根據工具名稱調用相應的 MCP 工具
+            if tool_name == "generate_image":
+                from .image_generation import ImageGenerationTools
+                image_tools = ImageGenerationTools(self.base_url)
+                return await image_tools.call_tool("text_to_image", tool_args)
+            elif tool_name == "manage_model":
+                from .model_management import ModelManagementTools  
+                model_tools = ModelManagementTools(self.base_url)
+                return await model_tools.call_tool("list_models", tool_args)
+            # 添加更多 MCP 工具...
+            
+        except Exception as e:
+            return [TextContent(type="text", text=f"MCP 工具調用錯誤: {str(e)}")]

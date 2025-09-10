@@ -133,3 +133,23 @@ class LlamaCpp(LLMInterface):
             Backend type string
         """
         return "llama_cpp"
+    def create_chat_completion_with_mcp(
+        self, 
+        messages: List[Dict[str, str]], 
+        mcp_enabled: bool = True,
+        max_tokens: int = None
+    ) -> Iterator[str]:
+        """帶 MCP 功能的聊天完成"""
+        
+        # 先進行常規 LLM 推理
+        llm_response = ""
+        for content in self.create_chat_completion(messages, max_tokens):
+            llm_response += content
+            yield content
+        
+        # 如果啟用 MCP，檢查是否需要工具調用
+        if mcp_enabled:
+            tool_calls = self.detect_tool_calls(llm_response)
+            for tool_call in tool_calls:
+                result = await self.execute_mcp_tool(tool_call)
+                yield f"\n\n[MCP 工具結果]: {result}"
