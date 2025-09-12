@@ -180,6 +180,33 @@ class LLMTools:
                     },
                     "required": ["query"]
                 }
+                        # 在 get_tools() 方法的 return 列表中添加（第183行前）：
+            Tool(
+                name="smart_completion",
+                description="智能完成 - 集成 MCP 工具調用",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "messages": {
+                            "type": "array",
+                            "description": "Chat messages in OpenAI format",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+                                    "content": {"type": "string"}
+                                },
+                                "required": ["role", "content"]
+                            }
+                        },
+                        "enable_mcp": {
+                            "type": "boolean",
+                            "description": "Enable MCP tool integration",
+                            "default": true
+                        }
+                    },
+                    "required": ["messages"]
+                }
             )
         ]
         
@@ -395,3 +422,77 @@ class LLMTools:
             
         except Exception as e:
             return [TextContent(type="text", text=f"MCP 工具調用錯誤: {str(e)}")]
+            
+    async def _smart_completion(self, args: Dict[str, Any]) -> Sequence[TextContent]:
+    """智能完成 - 集成 MCP 工具調用"""
+    # 1. 先進行 LLM 推理
+    llm_result = await self._chat_completion(args)
+    
+    if not args.get("enable_mcp", True):
+        return llm_result
+    
+    # 2. 分析響應，檢測工具調用需求
+    response_text = llm_result[0].text
+    
+    # 3. 如果需要，調用相應的 MCP 工具
+    additional_results = []
+    
+    if self._needs_image_generation(response_text):
+        image_result = await self._generate_image_from_response(response_text)
+        additional_results.extend(image_result)
+    
+    if self._needs_model_management(response_text):
+        model_result = await self._handle_model_request(response_text)
+        additional_results.extend(model_result)
+    
+    # 合併結果
+    return llm_result + additional_results
+
+def _needs_image_generation(self, text: str) -> bool:
+    """檢測是否需要圖像生成"""
+    keywords = ["生成圖片", "畫一張", "創建圖像", "generate image", "create picture"]
+    return any(keyword in text.lower() for keyword in keywords)
+
+def _needs_model_management(self, text: str) -> bool:
+    """檢測是否需要模型管理"""
+    keywords = ["列出模型", "下載模型", "管理模型", "list models", "download model"]
+    return any(keyword in text.lower() for keyword in keywords)
+
+async def _generate_image_from_response(self, text: str) -> Sequence[TextContent]:
+    """從響應中提取圖像生成請求並執行"""
+    try:
+        # 簡單的提示詞提取邏輯
+        prompt = self._extract_image_prompt(text)
+        
+        from .image_generation import ImageGenerationTools
+        image_tools = ImageGenerationTools(self.base_url)
+        return await image_tools.call_tool("text_to_image", {"prompt": prompt})
+    except Exception as e:
+        return [TextContent(type="text", text=f"圖像生成失敗: {str(e)}")]
+
+async def _handle_model_request(self, text: str) -> Sequence[TextContent]:
+    """處理模型管理請求"""
+    try:
+        from .model_management import ModelManagementTools
+        model_tools = ModelManagementTools(self.base_url)
+        return await model_tools.call_tool("list_models", {})
+    except Exception as e:
+        return [TextContent(type="text", text=f"模型管理失敗: {str(e)}")]
+
+def _extract_image_prompt(self, text: str) -> str:
+    """從文本中提取圖像生成提示詞"""
+    # 簡單的提取邏輯，可以根據需要改進
+    import re
+    patterns = [
+        r"生成圖片[：:]\s*([^。\n]+)",
+        r"畫一張\s*([^。\n]+)",
+        r"create\s+(?:an?\s+)?image\s+of\s+([^.\n]+)"
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    
+    # 如果沒有匹配到特定格式，返回一個默認提示
+    return "a beautiful landscape"
